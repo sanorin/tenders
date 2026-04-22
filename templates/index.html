@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система мониторинга тендеров</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Заголовок */
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        /* Карточки */
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+            border-left: 4px solid #667eea;
+            padding-left: 15px;
+        }
+        
+        /* Кнопки */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        /* Прогресс бар */
+        .progress-container {
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e5e7eb;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        /* Логи */
+        .log-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border-radius: 10px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            padding: 5px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .log-time {
+            color: #858585;
+            margin-right: 10px;
+        }
+        
+        /* Таблица тендеров */
+        .tenders-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .tenders-table th,
+        .tenders-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .tenders-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .tenders-table tr:hover {
+            background: #f9fafb;
+        }
+        
+        /* Поиск */
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        /* Модальное окно */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            width: 90%;
+        }
+        
+        /* Настройки */
+        .settings-form {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        /* Статус */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-running {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        
+        .status-completed {
+            background: #d1fae5;
+            color: #059669;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .header, .card {
+                padding: 15px;
+            }
+            
+            .tenders-table {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Заголовок -->
+        <div class="header">
+            <h1>
+                🤖 Система мониторинга тендеров
+                <span id="statusBadge" class="status-badge">Ожидание</span>
+            </h1>
+            <p class="subtitle">Автоматический поиск и обработка тендеров по робототехнике в Санкт-Петербурге</p>
+        </div>
+        
+        <!-- Управление -->
+        <div class="card">
+            <h2>⚙️ Управление</h2>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-primary" id="startBtn" onclick="startPipeline()">
+                    🚀 Запустить поиск
+                </button>
+                <button class="btn" onclick="openSettings()">
+                    ⚙️ Настройки
+                </button>
+                <button class="btn" onclick="refreshDashboard()">
+                    🔄 Обновить
+                </button>
+            </div>
+            
+            <div class="progress-container" id="progressContainer" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill">0%</div>
+                </div>
+                <div id="currentStep" style="margin-top: 10px; color: #666;"></div>
+            </div>
+        </div>
+        
+        <!-- Логи -->
+        <div class="card">
+            <h2>📋 Логи выполнения</h2>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry">Готов к работе</div>
+            </div>
+        </div>
+        
+        <!-- Поиск -->
+        <div class="card">
+            <h2>🔍 Поиск по тендерам</h2>
+            <div class="search-box">
+                <input type="text" class="search-input" id="searchInput" placeholder="Введите поисковый запрос...">
+                <button class="btn btn-primary" onclick="searchTenders()">Найти</button>
+            </div>
+            <div id="searchResults"></div>
+        </div>
+        
+        <!-- Список тендеров -->
+        <div class="card">
+            <h2>📄 Обработанные тендеры</h2>
+            <div style="overflow-x: auto;">
+                <table class="tenders-table" id="tendersTable">
+                    <thead>
+                        <tr>
+                            <th>Название файла</th>
+                            <th>Дата обработки</th>
+                            <th>Размер</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tendersList">
+                        <tr><td colspan="4" style="text-align: center;">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно настроек -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 20px;">⚙️ Настройки</h2>
+            <form id="settingsForm" class="settings-form">
+                <div class="form-group">
+                    <label>Количество дней для поиска:</label>
+                    <input type="number" id="days" name="days" min="1" max="30">
+                </div>
+                <div class="form-group">
+                    <label>Ключевые слова (через запятую):</label>
+                    <textarea id="keywords" name="keywords" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Слова-исключения (через запятую):</label>
+                    <textarea id="excludeWords" name="exclude_words" rows="5"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Регион поиска:</label>
+                    <input type="text" id="region" name="region">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn" onclick="closeSettings()">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Модальное окно просмотра тендера -->
+    <div id="tenderModal" class="modal">
+        <div class="modal-content">
+            <h2 id="tenderTitle" style="margin-bottom: 20px;">Детали тендера</h2>
+            <div id="tenderDetails"></div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button class="btn" onclick="closeTenderModal()">Закрыть</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let updateInterval;
+        
+        // Загрузка дашборда
+        async function refreshDashboard() {
+            try {
+                const response = await fetch('/api/dashboard');
+                const data = await response.json();
+                
+                // Обновляем статус
+                const status = data.status;
+                const statusBadge = document.getElementById('statusBadge');
+                if (status.is_running) {
+                    statusBadge.textContent = '🔄 Выполняется';
+                    statusBadge.className = 'status-badge status-running';
+                    document.getElementById('progressContainer').style.display = 'block';
+                    document.getElementById('progressFill').style.width = status.progress + '%';
+                    document.getElementById('progressFill').textContent = status.progress + '%';
+                    document.getElementById('currentStep').textContent = status.current_step;
+                    
+                    // Обновляем логи
+                    const logContainer = document.getElementById('logContainer');
+                    if (status.log_messages && status.log_messages.length > 0) {
+                        logContainer.innerHTML = status.log_messages.slice(-20).map(log => 
+                            `<div class="log-entry">
+                                <span class="log-time">[${log.timestamp}]</span>
+                                ${escapeHtml(log.message)}
+                            </div>`
+                        ).join('');
+                        logContainer.scrollTop = logContainer.scrollHeight;
+                    }
+                } else {
+                    statusBadge.textContent = '✅ Готов';
+                    statusBadge.className = 'status-badge status-completed';
+                    document.getElementById('progressContainer').style.display = 'none';
+                }
+                
+                // Обновляем список тендеров
+                const tendersList = document.getElementById('tendersList');
+                if (data.tenders && data.tenders.length > 0) {
+                    tendersList.innerHTML = data.tenders.map(tender => `
+                        <tr>
+                            <td>${escapeHtml(tender.file)}</td>
+                            <td>${escapeHtml(tender.date)}</td>
+                            <td>${(tender.size / 1024).toFixed(2)} KB</td>
+                            <td>
+                                <button class="btn" style="padding: 5px 10px; font-size: 12px;" onclick="viewTender('${tender.file}')">👁️ Просмотр</button>
+                                <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deleteTender('${tender.file}')">🗑️ Удалить</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tendersList.innerHTML = '<tr><td colspan="4" style="text-align: center;">Нет обработанных тендеров</td></tr>';
+                }
+            } catch (error) {
+                console.error('Ошибка при обновлении:', error);
+            }
+        }
+        
+        // Запуск пайплайна
+        async function startPipeline() {
+            const startBtn = document.getElementById('startBtn');
+            startBtn.disabled = true;
+            startBtn.textContent = 'Запуск...';
+            
+            try {
+                const response = await fetch('/api/start_pipeline', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    refreshDashboard();
+                    // Начинаем частое обновление
+                    if (updateInterval) clearInterval(updateInterval);
+                    updateInterval = setInterval(refreshDashboard, 2000);
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            } catch (error) {
+                alert('Ошибка при запуске: ' + error);
+            } finally {
+                startBtn.disabled = false;
+                startBtn.textContent = '🚀 Запустить поиск';
+            }
+        }
+        
+        // Поиск тендеров
+        async function searchTenders() {
+            const query = document.getElementById('searchInput').value;
+            if (!query) {
+                alert('Введите поисковый запрос');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('searchResults');
+            resultsDiv.innerHTML = '<div style="text-align: center;">Поиск...</div>';
+            
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                if (data.results.length === 0) {
+                    resultsDiv.innerHTML = '<div style="text-align: center; color: #666;">Ничего не найдено</div>';
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div style="margin-top: 20px;">
+                            <h3>Найдено ${data.results.length} тендеров:</h3>
+                            ${data.results.map((result, idx) => `
+                                <div style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 15px; margin-top: 10px;">
+                                    <div style="font-weight: bold; margin-bottom: 10px;">${idx + 1}. ${escapeHtml(result.file)}</div>
+                                    <div style="color: #666; margin-bottom: 10px;">📦 Оборудование: ${result.items_count} позиций</div>
+                                    ${result.has_contacts ? '<div style="color: #10b981;">📞 Есть контактная информация</div>' : ''}
+                                    <button class="btn" style="margin-top: 10px; padding: 5px 10px; font-size: 12px;" onclick="viewTender('${result.file}')">Подробнее</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = '<div style="text-align: center; color: red;">Ошибка при поиске</div>';
+            }
+        }
+        
+        // Просмотр тендера
+        async function viewTender(filename) {
+            try {
+                const response = await fetch(`/api/tender/${filename}`);
+                const data = await response.json();
+                
+                const modal = document.getElementById('tenderModal');
+                const title = document.getElementById('tenderTitle');
+                const details = document.getElementById('tenderDetails');
+                
+                title.textContent = `📄 ${filename}`;
+                
+                let html = '<div style="max-height: 60vh; overflow-y: auto;">';
+                
+                // Оборудование
+                if (data.items && data.items.length > 0) {
+                    html += '<h3 style="margin-top: 20px;">🛠️ Оборудование:</h3>';
+                    data.items.forEach((item, idx) => {
+                        html += `
+                            <div style="border-left: 3px solid #667eea; padding-left: 15px; margin: 15px 0;">
+                                <div><strong>${idx + 1}. ${escapeHtml(item.equipment_name || 'Без названия')}</strong></div>
+                                ${item.manufacturer ? `<div>Производитель: ${escapeHtml(item.manufacturer)}</div>` : ''}
+                                ${item.model ? `<div>Модель: ${escapeHtml(item.model)}</div>` : ''}
+                                ${item.equipment_type ? `<div>Тип: ${escapeHtml(item.equipment_type)}</div>` : ''}
+                                ${Object.keys(item.key_specs || {}).length > 0 ? 
+                                    `<div><strong>Характеристики:</strong><pre style="background: #f3f4f6; padding: 10px; border-radius: 5px; margin-top: 5px;">${JSON.stringify(item.key_specs, null, 2)}</pre></div>` : ''}
+                            </div>
+                        `;
+                    });
+                }
+                
+                // Контакты
+                if (data.contacts && Object.values(data.contacts).some(v => v)) {
+                    html += '<h3 style="margin-top: 20px;">📞 Контактная информация:</h3>';
+                    html += '<div style="background: #f3f4f6; padding: 15px; border-radius: 10px;">';
+                    if (data.contacts.organization) html += `<div>🏢 Организация: ${escapeHtml(data.contacts.organization)}</div>`;
+                    if (data.contacts.contact_person) html += `<div>👤 Контактное лицо: ${escapeHtml(data.contacts.contact_person)}</div>`;
+                    if (data.contacts.email) html += `<div>📧 Email: ${escapeHtml(data.contacts.email)}</div>`;
+                    if (data.contacts.phone) html += `<div>📞 Телефон: ${escapeHtml(data.contacts.phone)}</div>`;
+                    if (data.contacts.address) html += `<div>📍 Адрес: ${escapeHtml(data.contacts.address)}</div>`;
+                    html += '</div>';
+                }
+                
+                if ((!data.items || data.items.length === 0) && (!data.contacts || !Object.values(data.contacts).some(v => v))) {
+                    html += '<div style="text-align: center; color: #666;">Нет данных для отображения</div>';
+                }
+                
+                html += '</div>';
+                details.innerHTML = html;
+                modal.style.display = 'flex';
+                
+            } catch (error) {
+                alert('Ошибка при загрузке тендера');
+            }
+        }
+        
+        // Удаление тендера
+        async function deleteTender(filename) {
+            if (!confirm(`Удалить тендер ${filename}?`)) return;
+            
+            try {
+                const response = await fetch(`/api/delete_tender/${filename}`, { method: 'DELETE' });
+                const data = await response.json();
+                if (data.success) {
+                    refreshDashboard();
+                } else {
+                    alert('Ошибка при удалении');
+                }
+            } catch (error) {
+                alert('Ошибка при удалении');
+            }
+        }
+        
+        // Настройки
+        async function openSettings() {
+            const modal = document.getElementById('settingsModal');
+            modal.style.display = 'flex';
+            
+            try {
+                const response = await fetch('/api/settings');
+                const settings = await response.json();
+                
+                document.getElementById('days').value = settings.days;
+                document.getElementById('keywords').value = settings.keywords.join(', ');
+                document.getElementById('excludeWords').value = settings.exclude_words.join(', ');
+                document.getElementById('region').value = settings.region;
+            } catch (error) {
+                console.error('Ошибка загрузки настроек:', error);
+            }
+        }
+        
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+        
+        function closeTenderModal() {
+            document.getElementById('tenderModal').style.display = 'none';
+        }
+        
+        // Сохранение настроек
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const settings = {
+                days: parseInt(document.getElementById('days').value),
+                keywords: document.getElementById('keywords').value.split(',').map(s => s.trim()).filter(s => s),
+                exclude_words: document.getElementById('excludeWords').value.split(',').map(s => s.trim()).filter(s => s),
+                region: document.getElementById('region').value
+            };
+            
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                
+                if (response.ok) {
+                    alert('Настройки сохранены');
+                    closeSettings();
+                } else {
+                    alert('Ошибка сохранения');
+                }
+            } catch (error) {
+                alert('Ошибка сохранения');
+            }
+        });
+        
+        // Вспомогательная функция для экранирования HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Инициализация
+        refreshDashboard();
+        setInterval(refreshDashboard, 5000);
+        
+        // Закрытие модальных окон по клику вне области
+        window.onclick = function(event) {
+            const settingsModal = document.getElementById('settingsModal');
+            const tenderModal = document.getElementById('tenderModal');
+            if (event.target === settingsModal) closeSettings();
+            if (event.target === tenderModal) closeTenderModal();
+        };
+    </script>
+</body>
+</html>
