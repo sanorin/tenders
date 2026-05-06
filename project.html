@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система мониторинга тендеров</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #eef2f5;
+            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+            padding: 30px 40px;
+            color: #1e2a36;
+        }
+
+        .filter-section {
+            padding: 20px 28px;
+            border-bottom: 1px solid #e2e6ea;
+            background: #ffffff;
+        }
+
+        .filter-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #2c4c6e;
+            margin-bottom: 16px;
+            letter-spacing: 0.3px;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px 20px;
+            margin-bottom: 20px;
+        }
+
+        .filter-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-field label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #4a627a;
+        }
+
+        .filter-input {
+            padding: 8px 12px;
+            border: 1px solid #bacddc;
+            font-size: 13px;
+            font-family: inherit;
+            background: #fff;
+        }
+
+        .filter-input:focus {
+            border-color: #1e4663;
+            outline: none;
+        }
+
+        select.filter-input {
+            cursor: pointer;
+            background: #fff;
+        }
+
+        .sum-range {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sum-range span {
+            color: #8ba0b5;
+        }
+
+        .filter-input.small {
+            width: 100%;
+        }
+
+        .filter-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .info-note {
+            font-size: 11px;
+            color: #8ba3bc;
+            margin-left: 8px;
+        }
+
+        .app {
+            max-width: 1300px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1px solid #cbd5e0;
+        }
+
+        .header {
+            background: #ffffff;
+            padding: 20px 28px;
+            border-bottom: 2px solid #1e4663;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1e4663;
+        }
+
+        .logo p {
+            font-size: 12px;
+            color: #6c86a0;
+            margin-top: 6px;
+        }
+
+        .badge {
+            background: #f4f7fa;
+            border: 1px solid #cbdae6;
+            padding: 6px 14px;
+            font-size: 12px;
+            color: #1e4663;
+        }
+
+        .control-panel {
+            background: #f9fbfd;
+            padding: 16px 28px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: 1px solid #bdc4cc;
+            background: #ffffff;
+            padding: 8px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            color: #1e4663;
+        }
+
+        .btn-blue {
+            background: #1e4663;
+            border-color: #1e4663;
+            color: white;
+        }
+
+        .btn-blue:hover {
+            background: #0f3550;
+        }
+
+        .btn-light:hover {
+            background: #eef2f6;
+        }
+
+        .info-tag {
+            font-size: 12px;
+            color: #6c86a0;
+            background: #f4f7fa;
+            padding: 5px 12px;
+            border: 1px solid #dbe2e8;
+        }
+
+        .search-block {
+            padding: 20px 28px;
+            border-bottom: 1px solid #e2e6ea;
+        }
+
+        .search-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #2c4c6e;
+            margin-bottom: 10px;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 260px;
+            padding: 10px 14px;
+            border: 1px solid #bacddc;
+            font-size: 14px;
+            font-family: inherit;
+            background: #fff;
+        }
+
+        .search-input:focus {
+            border-color: #1e4663;
+            outline: none;
+        }
+
+        .table-section {
+            padding: 10px 28px 28px 28px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e4663;
+            margin-bottom: 16px;
+            border-left: 4px solid #1e4663;
+            padding-left: 14px;
+        }
+
+        .table-wrapper {
+            border: 1px solid #dee2e6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            text-align: left;
+            background: #f8f9fc;
+            padding: 12px 14px;
+            font-weight: 600;
+            color: #1e4663;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #edf1f5;
+            color: #2c3f55;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .action-btn {
+            background: white;
+            border: 1px solid #b9cddf;
+            padding: 4px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            color: #2c6e9e;
+            margin-right: 8px;
+        }
+
+        .action-btn:hover {
+            background: #edf3f8;
+        }
+
+        footer {
+            padding: 16px 28px;
+            border-top: 1px solid #e2e6ea;
+            font-size: 11px;
+            color: #8ba3bc;
+            text-align: center;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                padding: 16px;
+            }
+            .control-panel {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+
+    <div class="header">
+        <div class="logo">
+            <h1>Система мониторинга тендеров</h1>
+            <p>АО «Роббо»</p>
+        </div>
+        <div class="badge">
+            Робототехника
+        </div>
+    </div>
+
+    <div class="control-panel">
+        <div class="buttons">
+            <button class="btn btn-blue" id="btnStart">Запустить поиск</button>
+            <button class="btn btn-light" id="btnSettings">Настройки</button>
+            <button class="btn btn-light" id="btnRefresh">Обновить</button>
+        </div>
+
+    </div>
+
+    <div class="filter-section">
+        <div class="filter-title">Параметры поиска</div>
+        <div class="filter-grid">
+            <div class="filter-field">
+                <label>Ключевые слова</label>
+                <input type="text" id="keywords" class="filter-input" placeholder="например: робот, контроллер, датчик">
+            </div>
+            <div class="filter-field">
+                <label>Исключения</label>
+                <input type="text" id="exclude" class="filter-input" placeholder="слова-исключения через запятую">
+            </div>
+            <div class="filter-field">
+                <label>Сумма (от - до)</label>
+                <div class="sum-range">
+                    <input type="text" id="sumFrom" class="filter-input small" placeholder="от 0">
+                    <span>—</span>
+                    <input type="text" id="sumTo" class="filter-input small" placeholder="любая">
+                </div>
+            </div>
+            <div class="filter-field">
+                <label>Регион</label>
+                <select id="region" class="filter-input">
+                    <option value="">Все регионы</option>
+                    <option value="Москва">Москва</option>
+                    <option value="СПб">Санкт-Петербург</option>
+                    <option value="МО">Московская обл.</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label>Период</label>
+                <select id="period" class="filter-input">
+                    <option value="day">За сутки</option>
+                    <option value="week">За неделю</option>
+                    <option value="month" selected>За месяц</option>
+                    <option value="quarter">За квартал</option>
+                    <option value="year">За год</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label>Порог маржи (%)</label>
+                <input type="text" id="margin" class="filter-input" placeholder="например: 15">
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button class="btn btn-blue" id="filterSearchBtn">Поиск</button>
+            <button class="btn btn-light" id="saveParamsBtn">Сохранить параметры</button>
+        </div>
+    </div>
+
+    <div class="search-block">
+        <div class="search-label">ПОИСК ПО ТЕНДЕРАМ</div>
+        <div class="search-row">
+            <input type="text" class="search-input" id="searchInput" placeholder="Введите поисковый запрос...">
+            <button class="btn btn-light" id="btnSearch">Найти</button>
+        </div>
+    </div>
+
+        <div class="table-section">
+        <div class="section-title">Обработанные тендеры</div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Номер</th>
+                        <th>Объект закупки</th>
+                        <th>Дата размещения</th>
+                        <th>Дата окончания</th>
+                        <th>Начальная цена (₽)</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="tendersBody">
+                    <tr>
+                        <td>№ 01</td>
+                        <td>Поставка роботов</td>
+                        <td>25.04.2026</td>
+                        <td>30.05.2026</td>
+                        <td>5 400 000</td>
+                        <td><button class="action-btn" data-action="view">Просмотр</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <footer>
+        © АО «Роббо»
+    </footer>
+</div>
+
+<script> 
+    const showMessage = (action) => {
+        alert(`"${action}"`);
+    };
+
+    document.getElementById('btnStart')?.addEventListener('click', () => showMessage('Запустить поиск'));
+    document.getElementById('btnSettings')?.addEventListener('click', () => showMessage('Настройки'));
+    document.getElementById('btnRefresh')?.addEventListener('click', () => showMessage('Обновить'));
+    document.getElementById('btnSearch')?.addEventListener('click', () => {
+        const query = document.getElementById('searchInput')?.value || '';
+        showMessage(query ? `Найти: "${query}"` : 'Пустой запрос');
+    });
+    
+    const searchField = document.getElementById('searchInput');
+    if (searchField) {
+        searchField.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                showMessage(searchField.value ? `Поиск: "${searchField.value}"` : 'Пустой запрос');
+            }
+        });
+    }
+    
+    document.querySelectorAll('.action-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = btn.getAttribute('data-action') === 'view' ? 'Просмотр' : 'Удалить';
+            const row = btn.closest('tr');
+            let fileName = 'документ';
+            if (row && row.cells[0]) {
+                fileName = row.cells[0].innerText.trim();
+            }
+            showMessage(`${action} → ${fileName}`);
+        });
+    });
+
+    document.getElementById('filterSearchBtn')?.addEventListener('click', () => {
+        showMessage(`Поиск по параметрам`);
+    });
+</script>
+</body>
+</html>
