@@ -131,7 +131,11 @@ def get_tenders_optimized(days=DAYS_TO_KEEP, max_workers=10):
                 for a in soup.find_all("a", href=True):
                     href = a["href"]
                     if "common-info.html" in href:
-                        full_url = "https://zakupki.gov.ru" + href
+                        if href.startswith('http'):
+                            full_url = href
+                        else:
+                            # Убираем лишние слэши, если они есть в начале относительной ссылки
+                            full_url = "https://zakupki.gov.ru" + ("/" + href.lstrip("/"))
                         tenders_on_page.append(full_url)
                 
                 if not tenders_on_page:
