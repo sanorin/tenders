@@ -1,0 +1,221 @@
+"""
+Умный матчинг тендеров на основе TF-IDF и косинусной близости.
+Сравнивает запрос пользователя с содержимым всех тендеров (названия товаров, характеристики, контакты).
+
+Пример использования:
+    from smart_matcher import SmartMatcher
+    matcher = SmartMatcher()
+    results = matcher.match("сверлильный станок мощность 0.5 кВт", top_n=5)
+    for r in results:
+        print(r['file'], r['score'], r['matched_items'])
+"""
+
+import os
+import json
+import re
+from typing import List, Dict, Any
+
+# Попробуем импортировать scikit-learn (если не установлен, дадим понятную ошибку)
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+    print("⚠️ scikit-learn не установлен. Умный матчинг будет работать в упрощённом режиме (по ключевым словам).")
+
+
+class SmartMatcher:
+    def __init__(self, output_folder: str = "output"):
+        """
+        :param output_folder: папка с JSON-файлами тендеров
+        """
+        self.output_folder = output_folder
+        self.tenders = []          # список словарей с ключами 'file', 'text', 'items', 'contacts'
+        self.vectorizer = None
+        self.tfidf_matrix = None
+
+    def load_tenders(self) -> None:
+        """Загружает все JSON из output_folder и преобразует в текстовое представление для TF-IDF."""
+        self.tenders = []
+        if not os.path.exists(self.output_folder):
+            print(f"Папка {self.output_folder} не найдена.")
+            return
+
+        for filename in os.listdir(self.output_folder):
+            if not filename.endswith(".json"):
+                continue
+            filepath = os.path.join(self.output_folder, filename)
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            # Собираем весь текст, который будет участвовать в поиске
+            text_parts = []
+
+            # Добавляем контакты (организация, адрес, телефон)
+            contacts = data.get("contacts", {})
+            if contacts.get("organization"):
+                text_parts.append(contacts["organization"])
+            if contacts.get("address"):
+                text_parts.append(contacts["address"])
+            if contacts.get("email"):
+                text_parts.append(contacts["email"])
+
+            # Добавляем товары: название + все характеристики
+            items = data.get("items", [])
+            for item in items:
+                name = item.get("equipment_name", "")
+                if name:
+                    text_parts.append(name)
+                specs = item.get("key_specs", {})
+                for key, value in specs.items():
+                    if value:
+                        text_parts.append(f"{key} {value}")
+
+            # Если совсем нет данных, оставляем пустую строку
+            full_text = " ".join(text_parts).lower()
+            if not full_text:
+                full_text = " "
+
+            self.tenders.append({
+                "file": filename,
+                "text": full_text,
+                "items": items,
+                "contacts": contacts
+            })
+
+        print(f"Загружено {len(self.tenders)} тендеров для умного матчинга.")
+
+    def build_index(self) -> None:
+        """Строит TF-IDF матрицу для всех загруженных тендеров."""
+        if not SKLEARN_AVAILABLE:
+            print("TF-IDF недоступен, матчинг будет работать в упрощённом режиме.")
+            return
+
+        if not self.tenders:
+            self.load_tenders()
+
+        # Адаптируем параметры под количество документов
+        n_docs = len(self.tenders)
+        if n_docs < 2:
+            print("Внимание: слишком мало тендеров (меньше 2). Используем упрощённые параметры TF-IDF.")
+            self.vectorizer = TfidfVectorizer(
+                analyzer='word',
+                ngram_range=(1, 2),
+                lowercase=True,
+                max_df=1.0,
+                min_df=1
+            )
+        else:
+            self.vectorizer = TfidfVectorizer(
+                analyzer='word',
+                ngram_range=(1, 2),
+                lowercase=True,
+                max_df=0.8,
+                min_df=1  # меняем с 2 на 1, чтобы избежать ошибки при малом количестве документов
+            )
+        corpus = [t["text"] for t in self.tenders]
+        self.tfidf_matrix = self.vectorizer.fit_transform(corpus)
+        print("TF-IDF матрица построена.")
+
+    def preprocess_query(self, query: str) -> str:
+        """Очистка запроса: удаляем лишние символы, приводим к нижнему регистру."""
+        query = re.sub(r'[^\w\s]', ' ', query)
+        return query.lower().strip()
+
+    def match(self, query: str, top_n: int = 10) -> List[Dict[str, Any]]:
+        """
+        Основной метод умного матчинга.
+        :param query: текстовый запрос пользователя
+        :param top_n: количество возвращаемых тендеров
+        :return: список словарей с ключами 'file', 'score', 'matched_items', 'contacts'
+        """
+        if not self.tenders:
+            self.load_tenders()
+
+        if self.tfidf_matrix is None and SKLEARN_AVAILABLE:
+            self.build_index()
+
+        query_clean = self.preprocess_query(query)
+
+        # Если scikit-learn отсутствует, используем упрощённый метод (по ключевым словам)
+        if not SKLEARN_AVAILABLE:
+            return self._simple_keyword_match(query_clean, top_n)
+
+        # Преобразуем запрос в вектор
+        query_vec = self.vectorizer.transform([query_clean])
+        # Косинусная близость со всеми тендерами
+        similarities = cosine_similarity(query_vec, self.tfidf_matrix).flatten()
+
+        # Сортируем по убыванию схожести
+        scored_tenders = []
+        for idx, sim in enumerate(similarities):
+            if sim > 0:   # берём только ненулевые совпадения
+                tend = self.tenders[idx]
+                # Дополнительно определяем, какие именно позиции оборудования совпали (для отчёта)
+                matched_items = self._extract_matched_items(query_clean, tend["items"])
+                scored_tenders.append({
+                    "file": tend["file"],
+                    "score": round(float(sim), 4),
+                    "matched_items": matched_items,
+                    "contacts": tend["contacts"],
+                    "items": tend["items"]
+                })
+
+        scored_tenders.sort(key=lambda x: x["score"], reverse=True)
+        return scored_tenders[:top_n]
+
+    def _simple_keyword_match(self, query: str, top_n: int) -> List[Dict[str, Any]]:
+        """Упрощённый матчинг: считаем, сколько слов из запроса входит в текст тендера (без весов)."""
+        query_words = set(query.split())
+        if not query_words:
+            return []
+        scored = []
+        for tend in self.tenders:
+            text = tend["text"]
+            matches = sum(1 for w in query_words if w in text)
+            if matches == 0:
+                continue
+            score = matches / len(query_words)
+            matched_items = self._extract_matched_items(query, tend["items"])
+            scored.append({
+                "file": tend["file"],
+                "score": round(score, 4),
+                "matched_items": matched_items,
+                "contacts": tend["contacts"],
+                "items": tend["items"]
+            })
+        scored.sort(key=lambda x: x["score"], reverse=True)
+        return scored[:top_n]
+
+    def _extract_matched_items(self, query: str, items: List[Dict]) -> List[str]:
+        """Возвращает названия товаров, которые имеют пересечение с запросом (для пояснения)."""
+        matched = []
+        query_lower = query.lower()
+        for item in items:
+            name = item.get("equipment_name", "")
+            if name and any(term in name.lower() for term in query_lower.split()):
+                matched.append(name)
+            else:
+                # проверяем характеристики
+                specs = item.get("key_specs", {})
+                for val in specs.values():
+                    if val and any(term in val.lower() for term in query_lower.split()):
+                        matched.append(name)
+                        break
+        return list(set(matched))[:5]   # не более 5 позиций
+
+
+# Пример использования, если запустить файл напрямую
+if __name__ == "__main__":
+    matcher = SmartMatcher()
+    q = input("🔍 Введите описание необходимого оборудования: ")
+    results = matcher.match(q, top_n=10)
+
+    print(f"\nНайдено {len(results)} релевантных тендеров:\n")
+    for i, res in enumerate(results, 1):
+        print(f"{i}. {res['file']} — релевантность: {res['score']*100:.1f}%")
+        if res['matched_items']:
+            print(f"   Совпадающие позиции: {', '.join(res['matched_items'][:3])}")
+        print(f"   Организация: {res['contacts'].get('organization', '—')[:80]}")
+        print()
